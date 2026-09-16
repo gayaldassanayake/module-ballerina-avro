@@ -31,7 +31,6 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericEnumSymbol;
 import org.apache.avro.generic.GenericFixed;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.util.Utf8;
 
 import java.nio.ByteBuffer;
 import java.util.Map;
@@ -93,7 +92,7 @@ public class UnionRecordUtils {
     }
 
     private static void handleStringField(Schema.Field field, Object fieldData, BMap<BString, Object> ballerinaRecord) {
-        if (fieldData instanceof Utf8) {
+        if (fieldData instanceof CharSequence) {
             ballerinaRecord.put(StringUtils.fromString(field.name()), StringUtils.fromString(fieldData.toString()));
         }
     }

@@ -1,0 +1,34 @@
+{
+    "type": "record",
+    "name": "UnionRec",
+    "fields": [
+        {
+            "name": "field1",
+            "type": [
+                "null",
+                {
+                    "type": "string",
+                    "avro.java.string": "String"
+                },
+                {
+                    "type": "record",
+                    "name": "UnionEnumRecord",
+                    "fields": [
+                        {
+                            "name": "field1",
+                            "type": [
+                                "null",
+                                "string",
+                                {
+                                    "type": "enum",
+                                    "name": "Numbers",
+                                    "symbols": ["ONE", "TWO"]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

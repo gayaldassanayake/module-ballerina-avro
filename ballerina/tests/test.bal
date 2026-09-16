@@ -80,6 +80,19 @@ public isolated function testUnionsWithRecordsAndStrings() returns error? {
 }
 
 @test:Config {
+    groups: ["record", "union"]
+}
+public isolated function testUnionsWithNonUtf8BackedStringValues() returns error? {
+    string jsonFileName = string `tests/resources/schema_union_string_non_utf8.json`;
+    string schema = (check io:fileReadJson(jsonFileName)).toString();
+
+    UnionRec number = {
+        field1: "ONE"
+    };
+    return verifyOperation(UnionRec, number, schema);
+}
+
+@test:Config {
     groups: ["fixed", "union"]
 }
 public isolated function testUnionsWithReadOnlyRecords() returns error? {
