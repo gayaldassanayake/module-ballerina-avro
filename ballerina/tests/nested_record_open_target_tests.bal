@@ -78,6 +78,21 @@ public type ClosedArrayOuter record {
     ArrayHeaderForOpenTarget header;
 };
 
+public type CdcHeaderForOpenTarget record {
+    string entityName;
+    string changeType;
+    string[] recordIds;
+    string[] changedFields;
+    string[] nulledFields;
+    string[] diffFields;
+    int commitTimestamp;
+};
+
+public type CdcEventForOpenTarget record {
+    CdcHeaderForOpenTarget ChangeEventHeader;
+    string? Name;
+};
+
 @test:Config {
     groups: ["record", "array", "union"]
 }
@@ -102,4 +117,39 @@ public isolated function testArrayFieldNestedInSubRecordOfOpenParentType() retur
     OpenPayload decoded = check avro.fromAvro(serializedValue);
     OpenPayload expected = {"header": {"changedFields": ["Name", "Phone"]}};
     test:assertEquals(decoded, expected);
+}
+
+// Salesforce CDC uses a richer ChangeEventHeader than the minimal array
+// repro above. Decode it into `record {}` to ensure all header scalars and
+// bitmap arrays are materialized as ordinary Ballerina values.
+@test:Config {
+    groups: ["record", "array", "union"]
+}
+public isolated function testSalesforceCdcHeaderDecodesIntoOpenPayload() returns error? {
+    string schema = string `
+        {"type":"record","name":"AccountChangeEvent","fields":[
+          {"name":"ChangeEventHeader","type":{"type":"record","name":"ChangeEventHeader","fields":[
+            {"name":"entityName","type":"string"},
+            {"name":"changeType","type":"string"},
+            {"name":"recordIds","type":{"type":"array","items":"string"}},
+            {"name":"changedFields","type":{"type":"array","items":"string"}},
+            {"name":"nulledFields","type":{"type":"array","items":"string"}},
+            {"name":"diffFields","type":{"type":"array","items":"string"}},
+            {"name":"commitTimestamp","type":"long"}
+          ]}},
+          {"name":"Name","type":["null","string"],"default":null}
+        ]}`;
+
+    Schema avro = check new (schema);
+    CdcHeaderForOpenTarget header = {
+        entityName: "Account", changeType: "CREATE", recordIds: ["001000000000001"],
+        changedFields: ["0x02"], nulledFields: [], diffFields: [], commitTimestamp: 1726500000000
+    };
+    CdcEventForOpenTarget event = {
+        ChangeEventHeader: header, Name: "CDC regression account"
+    };
+    byte[] encoded = check avro.toAvro(event);
+
+    OpenPayload decoded = check avro.fromAvro(encoded);
+    test:assertEquals(decoded, <OpenPayload>{"ChangeEventHeader": header, "Name": "CDC regression account"});
 }
