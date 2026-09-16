@@ -130,7 +130,7 @@ public isolated function testSalesforceCdcHeaderDecodesIntoOpenPayload() returns
         {"type":"record","name":"AccountChangeEvent","fields":[
           {"name":"ChangeEventHeader","type":{"type":"record","name":"ChangeEventHeader","fields":[
             {"name":"entityName","type":"string"},
-            {"name":"changeType","type":"string"},
+            {"name":"changeType","type":["null","string"],"default":null},
             {"name":"recordIds","type":{"type":"array","items":"string"}},
             {"name":"changedFields","type":{"type":"array","items":"string"}},
             {"name":"nulledFields","type":{"type":"array","items":"string"}},
