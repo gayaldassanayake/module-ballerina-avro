@@ -103,3 +103,42 @@ public isolated function testArrayFieldNestedInSubRecordOfOpenParentType() retur
     OpenPayload expected = {"header": {"changedFields": ["Name", "Phone"]}};
     test:assertEquals(decoded, expected);
 }
+
+// A scalar field nested inside a union-wrapped sub-record, decoded into an
+// open parent type. Reproduces a non-Utf8-backed union string (schema
+// property "avro.java.string": "String") the way a producer other than this
+// module's own serializer can emit it.
+public type ScalarHeaderForOpenTarget record {
+    string entityName;
+    string? changeType;
+    int commitTimestamp;
+};
+
+public type UnionWrappedOuter record {
+    ScalarHeaderForOpenTarget? header;
+};
+
+@test:Config {
+    groups: ["record", "union"]
+}
+public isolated function testNonUtf8ScalarFieldInUnionWrappedSubRecordOfOpenParentType() returns error? {
+    string schema = string `
+        {"type":"record","name":"UnionWrappedOuter","fields":[
+          {"name":"header","type":["null",{"type":"record","name":"ScalarHeader","fields":[
+            {"name":"entityName","type":"string"},
+            {"name":"changeType","type":["null",{"type":"string","avro.java.string":"String"}],"default":null},
+            {"name":"commitTimestamp","type":"long"}
+          ]}],"default":null}
+        ]}`;
+
+    Schema avro = check new (schema);
+    UnionWrappedOuter typedEvent = {
+        header: {entityName: "Account", changeType: "CREATE", commitTimestamp: 1726500000000}
+    };
+    byte[] encoded = check avro.toAvro(typedEvent);
+
+    OpenPayload decoded = check avro.fromAvro(encoded);
+    map<anydata> header = <map<anydata>>decoded["header"];
+    string changeType = <string>header["changeType"];
+    test:assertEquals(changeType, "CREATE");
+}
