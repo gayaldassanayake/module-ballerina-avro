@@ -142,3 +142,45 @@ public isolated function testNonUtf8ScalarFieldInUnionWrappedSubRecordOfOpenPare
     string changeType = <string>header["changeType"];
     test:assertEquals(changeType, "CREATE");
 }
+
+// A directly-typed (non-union, required) enum field nested inside a
+// required sub-record, decoded into an open parent type. Reproduces
+// Salesforce Pub/Sub CDC's actual ChangeEventHeader.changeType shape: both
+// the header record and its changeType field are required, not union
+// members, so this never goes through visitUnionRecords at all -- it hits
+// the top-level per-field switch in DeserializeVisitor.visit(RecordDeserializer,
+// GenericRecord), which previously had no ENUM case and fell through to the
+// default branch, inserting the raw org.apache.avro.generic.GenericData
+// .EnumSymbol instead of converting it to a Ballerina string.
+public type DirectEnumHeaderForOpenTarget record {
+    string entityName;
+    Numbers changeType;
+};
+
+public type DirectEnumOuter record {
+    DirectEnumHeaderForOpenTarget header;
+};
+
+@test:Config {
+    groups: ["record", "enum"]
+}
+public isolated function testDirectEnumFieldNestedInRequiredSubRecordOfOpenParentType() returns error? {
+    string schema = string `
+        {"type":"record","name":"DirectEnumOuter","fields":[
+          {"name":"header","type":{"type":"record","name":"DirectEnumHeader","fields":[
+            {"name":"entityName","type":"string"},
+            {"name":"changeType","type":{"type":"enum","name":"Numbers","symbols":["ONE","TWO","THREE","FOUR"]}}
+          ]}}
+        ]}`;
+
+    Schema avro = check new (schema);
+    DirectEnumOuter typedEvent = {
+        header: {entityName: "Account", changeType: TWO}
+    };
+    byte[] encoded = check avro.toAvro(typedEvent);
+
+    OpenPayload decoded = check avro.fromAvro(encoded);
+    map<anydata> header = <map<anydata>>decoded["header"];
+    string changeType = <string>header["changeType"];
+    test:assertEquals(changeType, "TWO");
+}

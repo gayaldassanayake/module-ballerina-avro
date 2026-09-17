@@ -108,6 +108,8 @@ public class DeserializeVisitor implements IDeserializeVisitor {
                         avroRecord.put(fromString(field.name()), Long.parseLong(fieldData.toString()));
                 case FLOAT ->
                         avroRecord.put(fromString(field.name()), Double.parseDouble(fieldData.toString()));
+                case ENUM ->
+                        avroRecord.put(fromString(field.name()), fromString(fieldData.toString()));
                 case UNION ->
                         processUnionField(type, avroRecord, field, fieldData);
                 default ->
